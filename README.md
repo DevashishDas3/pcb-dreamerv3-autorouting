@@ -10,51 +10,65 @@ This project demonstrates how to use the `JPype` library to wrap an existing Jav
 
 ```bash
 pip install -r requirements.txt
+```
+---
 
-Start Training (Description)
+## Start Training (Description)
 
-Once all project files (including the generated freerouting_env.py) are placed in the correct locations, you can start the DreamerV3 training process:
+Once all project files (including the generated `freerouting_env.py`) are placed in the correct locations, you can start the DreamerV3 training process.
 
-Open the terminal
+---
 
-Use Command Prompt or PowerShell on Windows, and Terminal on macOS/Linux.
+### 1. Open the Terminal
 
-Navigate to the project root directory
+* Use **Command Prompt** or **PowerShell** on Windows, and **Terminal** on macOS/Linux.
 
-Use the cd command to switch to the main project folder (example: dreamerv3-freerouting-env):
+---
 
+### 2. Navigate to the Project Root Directory
+
+* Use the `cd` command to switch to the main project folder (example: `dreamerv3-freerouting-env`):
+
+```bash
 cd path/to/your/projects/dreamer-Autorouting
+```
 
+* Make sure you run the training command from this directory so that both the DreamerV3 library and the custom environment module can be properly located.
 
-Make sure you run the training command from this directory so that both the DreamerV3 library and the custom environment module can be properly located.
+---
 
-Run the training command
+### 3. Run the Training Command
 
+```bash
 python dreamerv3/train.py --configs defaults freerouting
+```
 
+**Command breakdown:**
 
-Command breakdown:
+* `python dreamerv3/train.py`: Executes the main DreamerV3 training script.
+* `--configs`: Tells `train.py` to load one or more configuration sets.
+* `defaults freerouting`: Loads the default parameters first, then overrides them with the custom `freerouting` configuration (e.g., using the `Freerouting-v0` environment).
 
-python dreamerv3/train.py: Executes the main DreamerV3 training script.
+---
 
---configs: Tells train.py to load one or more configuration sets.
+### 4. Monitor the Training Process
 
-defaults freerouting: Loads the default parameters first, then overrides them with the custom freerouting configuration (e.g., using the Freerouting-v0 environment).
+* When training starts, logs will appear in the terminal (these may include JPype/JVM startup messages).
+* Example expected messages:
 
-Monitor the training process
+  * “Creating Gym environment: Freerouting-v0”
+  * Training steps, rewards, and loss updates.
+* Training results will be saved in the project root directory under `logdir`, including:
 
-When training starts, logs will appear in the terminal (these may include JPype/JVM startup messages).
+  * Model weights
+  * Evaluation videos
+  * TensorBoard logs
 
-Example expected messages:
+---
 
-“Creating Gym environment: Freerouting-v0”
+### Notes
 
-Training steps, rewards, and loss updates.
+* Ensure that the API configurations of `freerouting.jar` and `freerouting_env.py`, as well as JPype startup parameters, are correctly set; otherwise, JVM initialization or environment creation errors may occur.
+* If you encounter errors, verify your Python dependencies, JPype version, and JVM path settings.
 
-Training results will be saved in the project root directory under logdir, including model weights, evaluation videos, and TensorBoard logs.
-
-Notes
-
-Ensure that the API configurations of freerouting.jar and freerouting_env.py, as well as JPype startup parameters, are correctly set; otherwise, JVM initialization or environment creation errors may occur.
-
-If you encounter errors, verify your Python dependencies, JPype version, and JVM path settings.
+---
