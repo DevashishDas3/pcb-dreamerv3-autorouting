@@ -1,39 +1,63 @@
+---
+
 # Using DreamerV3 to Train Freerouting Auto-Routing (JPype Method)
 
-This project demonstrates how to use the `JPype` library to wrap an existing Java application (`freerouting.jar`) as a custom `gymnasium` reinforcement learning environment, and then train it using the **DreamerV3** framework.
+This project demonstrates how to use the `JPype` library to wrap an existing Java application (`freerouting.jar`) as a custom `gymnasium` reinforcement-learning environment, and then train it using the **DreamerV3** framework.
 
 ---
 
 ## Project Setup
 
-### Install Dependencies
+### 1. Install Dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
+
 ---
 
-## Start Training (Description)
+### 2. Download `freerouting.jar`
 
-Once all project files (including the generated `freerouting_env.py`) are placed in the correct locations, you can start the DreamerV3 training process.
+The Freerouting Java router is required for this project.
+Download the latest version of **`freerouting.jar`** from its official repository:
+
+👉 [https://github.com/freerouting/freerouting/releases](https://github.com/freerouting/freerouting/releases)
+
+After downloading, place the file in your project structure (for example):
+
+```
+dreamer-Autorouting/
+├── freerouting_env.py
+├── freerouting.jar   ← put it here
+├── dreamerv3/
+└── ...
+```
+
+> **Note:** The Python environment uses JPype to start a JVM and call `freerouting.jar`, so the file path must be correct.
+
+---
+
+## Start Training
+
+Once all project files (including the generated `freerouting_env.py` and `freerouting.jar`) are in the correct locations, you can start the DreamerV3 training process.
 
 ---
 
 ### 1. Open the Terminal
 
-* Use **Command Prompt** or **PowerShell** on Windows, and **Terminal** on macOS/Linux.
+* Use **Command Prompt** or **PowerShell** on Windows, or **Terminal** on macOS/Linux.
 
 ---
 
 ### 2. Navigate to the Project Root Directory
 
-* Use the `cd` command to switch to the main project folder (example: `dreamerv3-freerouting-env`):
+Use the `cd` command to switch to the main project folder (example: `dreamerv3-freerouting-env`):
 
 ```bash
 cd path/to/your/projects/dreamer-Autorouting
 ```
 
-* Make sure you run the training command from this directory so that both the DreamerV3 library and the custom environment module can be properly located.
+Make sure you run the training command from this directory so that both the DreamerV3 library and the custom environment module can be properly located.
 
 ---
 
