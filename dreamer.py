@@ -4,6 +4,7 @@ import os
 import pathlib
 import sys
 import gymnasium as gym
+
 os.environ["MUJOCO_GL"] = "glfw"
 
 import numpy as np
@@ -21,8 +22,8 @@ import torch
 from torch import nn
 from torch import distributions as torchd
 
-
 to_np = lambda x: x.detach().cpu().numpy()
+
 
 class Dreamer(nn.Module):
     def __init__(self, obs_space, act_space, config, logger, dataset):
@@ -192,20 +193,30 @@ def make_env(config, mode, id):
 
         env = minecraft.make_env(task, size=config.size, break_speed=config.break_speed)
         env = wrappers.OneHotAction(env)
-    elif suite == 'gym':
+    elif suite == "freerouting":
+        import envs.freerouting_jpype_env as freerouting_env
+
+        print("Creating Gym environment: Freerouting-v0")
+        env = freerouting_env.FreeroutingJPypeEnv(
+            jar_path=config.freerouting_jar_path,
+            dsn_file_path=config.freerouting_dsn_path,
+            seed=config.seed + id,
+        )
+        env = wrappers.OneHotAction(env)
+    elif suite == "gym":
         # 建立 Gym 基礎環境
         env = gym.make(config.task)
-        
+
         # 使用 wrappers.FromGym 來轉換環境接口，使其符合 Dreamer 的要求
-        env = wrappers.FromGym(env, obs_key='state')
-        
+        env = wrappers.FromGym(env, obs_key="state")
+
         # 檢查是否需要加上其他 wrapper
         if config.wrappers.action_repeat > 1:
-          env = wrappers.ActionRepeat(env, config.wrappers.action_repeat)
-        
+            env = wrappers.ActionRepeat(env, config.wrappers.action_repeat)
+
         # 如果有 reward_scale 的設定，則加上對應的 wrapper
-        if config.wrappers.get('reward_scale', 1) != 1:
-          env = wrappers.RewardScale(env, config.wrappers.reward_scale)
+        if config.wrappers.get("reward_scale", 1) != 1:
+            env = wrappers.RewardScale(env, config.wrappers.reward_scale)
     else:
         raise NotImplementedError(suite)
     env = wrappers.TimeLimit(env, config.time_limit)
@@ -220,6 +231,8 @@ def main(config):
     tools.set_seed_everywhere(config.seed)
     if config.deterministic_run:
         tools.enable_deterministic_run()
+    if config.logdir is None:
+        config.logdir = f"logs/{config.task}"
     logdir = pathlib.Path(config.logdir).expanduser()
     config.traindir = config.traindir or logdir / "train_eps"
     config.evaldir = config.evaldir or logdir / "eval_eps"
@@ -356,13 +369,14 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--configs", nargs="+")
     args, remaining = parser.parse_known_args()
-    configs = yaml.safe_load(
+    yaml_loader = yaml.YAML(typ="safe", pure=True)
+    configs = yaml_loader.load(
         (pathlib.Path(sys.argv[0]).parent / "configs.yaml").read_text()
     )
 
     def recursive_update(base, update):
         for key, value in update.items():
-            if isinstance(value, dict) and key in base:
+            if isinstance(value, dict) and key in base and isinstance(base[key], dict):
                 recursive_update(base[key], value)
             else:
                 base[key] = value

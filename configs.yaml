@@ -156,29 +156,19 @@ atari100k:
   time_limit: 108000
 
 freerouting:
-  defaults:
-    - defaults
-    - _dreamer
-  task: freerouting_dreamer_v3
-  envs:
-    type: from_gym
-    from_gym:
-      name: 'Freerouting-v0'
-      obs_key: image
-  action_space:
-    discrete: 100
-  obs_space:
-    shape: [64, 64, 3] 
-    dtype: 'uint8'     
-    image: ${obs_space}
-  encoder:
-    type: cnn
-  decoder:
-    type: cnn
-
-  env:
-    render_size: [64, 64]
-    action_repeat: 1
+  task: freerouting_default
+  envs: 1
+  action_repeat: 1
+  time_limit: 200
+  device: cpu
+  compile: False
+  video_pred_log: false
+  actor: {dist: 'onehot', std: 'none'}
+  imag_gradient: 'reinforce'
+  encoder: {mlp_keys: '$^', cnn_keys: 'image'}
+  decoder: {mlp_keys: '$^', cnn_keys: 'image'}
+  freerouting_jar_path: 'freerouting.jar'
+  freerouting_dsn_path: 'Issue313-FastTest.dsn'
     
 minecraft:
   task: minecraft_diamond

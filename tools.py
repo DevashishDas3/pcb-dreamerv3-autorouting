@@ -17,7 +17,6 @@ from torch.nn import functional as F
 from torch import distributions as torchd
 from torch.utils.tensorboard import SummaryWriter
 
-
 to_np = lambda x: x.detach().cpu().numpy()
 
 
@@ -358,6 +357,14 @@ def sample_episodes(episodes, length, seed=0):
                 }
                 if "is_first" in ret:
                     ret["is_first"][size] = True
+            seq_len = len(next(iter(ret.values())))
+            if "is_first" not in ret:
+                ret["is_first"] = np.zeros(seq_len, dtype=bool)
+                ret["is_first"][0] = True
+                if size and size < seq_len:
+                    ret["is_first"][size] = True
+            if "is_terminal" not in ret:
+                ret["is_terminal"] = np.zeros(seq_len, dtype=bool)
             size = len(next(iter(ret.values())))
         yield ret
 
@@ -745,7 +752,10 @@ class Optimizer:
             "sgd": lambda: torch.optim.SGD(parameters, lr=lr),
             "momentum": lambda: torch.optim.SGD(parameters, lr=lr, momentum=0.9),
         }[opt]()
-        self._scaler = amp.GradScaler('cuda', enabled=use_amp)
+        if hasattr(torch, "amp") and hasattr(torch.amp, "GradScaler"):
+            self._scaler = torch.amp.GradScaler("cuda", enabled=use_amp)
+        else:
+            self._scaler = torch.cuda.amp.GradScaler(enabled=use_amp)
 
     def __call__(self, loss, params, retain_graph=True):
         assert len(loss.shape) == 0, loss.shape

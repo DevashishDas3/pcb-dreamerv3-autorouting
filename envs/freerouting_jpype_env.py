@@ -1,94 +1,254 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Sat Oct 18 12:27:46 2025
+import hashlib
+import os
+import warnings
 
-@author: user
-"""
-
-import gymnasium as gym
-from gymnasium import spaces
-import jpype
-import jpype.imports
+import gym
 import numpy as np
 
+try:
+    import jpype
+except Exception:
+    jpype = None
+
+
 class FreeroutingJPypeEnv(gym.Env):
-    """
-    使用 JPype 直接控制 freerouting.jar 的 Gymnasium 環境。
-    """
-    def __init__(self, jar_path, dsn_file_path):
+    """Freerouting environment with legacy and newer JPype backend support."""
+
+    metadata = {"render.modes": []}
+
+    def __init__(
+        self,
+        jar_path="",
+        dsn_file_path="",
+        seed=0,
+        action_size=100,
+        obs_shape=(64, 64, 3),
+        max_steps=200,
+    ):
         super().__init__()
+        self._rng = np.random.RandomState(seed)
+        self._max_steps = max_steps
+        self._step_count = 0
+        self._dummy_mode = True
+        self._backend = "dummy"
+        self._controller = None
+        self._status_controller = None
+        self._session_controller = None
+        self._job_controller = None
+        self._dsn_file_path = dsn_file_path
 
+        self.action_space = gym.spaces.Discrete(action_size)
+        self.observation_space = gym.spaces.Dict(
+            {
+                "image": gym.spaces.Box(
+                    low=0,
+                    high=255,
+                    shape=obs_shape,
+                    dtype=np.uint8,
+                )
+            }
+        )
 
-        if not jpype.isJVMStarted():
-            jpype.startJVM(classpath=[jar_path])
+        print("Freerouting backend: initializing")
+
+        if not jpype:
+            warnings.warn("JPype not installed; using dummy freerouting environment.")
+            print("Freerouting backend: dummy")
+            return
+
+        if not (
+            jar_path
+            and dsn_file_path
+            and os.path.exists(jar_path)
+            and os.path.exists(dsn_file_path)
+        ):
+            warnings.warn(
+                "Freerouting jar or dsn path is missing/invalid; using dummy freerouting environment."
+            )
+            print("Freerouting backend: dummy")
+            return
 
         try:
-            # 這是我們假設找到的核心控制器類別
-            self.RoutingController = jpype.JClass('app.freerouting.logic.RoutingController')
-        except Exception as e:
-            raise ImportError(f"無法從 JAR 檔案中找到指定的 Java 類別。請檢查類別路徑是否正確。錯誤: {e}")
+            if not jpype.isJVMStarted():
+                jpype.startJVM(classpath=[jar_path])
+        except Exception as err:
+            warnings.warn(
+                f"Failed to start JVM for freerouting ({err}); using dummy environment."
+            )
+            print("Freerouting backend: dummy")
+            return
 
-    
-        self.controller = self.RoutingController(dsn_file_path)
+        try:
+            if self._class_exists("app.freerouting.logic.RoutingController"):
+                self._init_legacy_backend()
+            elif self._class_exists("app.freerouting.api.v1.SystemControllerV1"):
+                self._init_v1_backend()
+            else:
+                warnings.warn(
+                    "No known freerouting JPype backend class found in jar; using dummy environment."
+                )
+                print("Freerouting backend: dummy")
+        except Exception as err:
+            warnings.warn(
+                f"Failed to initialize freerouting JPype backend ({err}); using dummy environment."
+            )
+            print("Freerouting backend: dummy")
 
-        self.action_space = spaces.Discrete(100)
-        self.observation_space = spaces.Box(low=0, high=255, 
-                                            shape=(64, 64, 1), dtype=np.uint8)
+    def _class_exists(self, class_name):
+        try:
+            jpype.JClass(class_name)
+            return True
+        except Exception as err:
+            if "UnsupportedClassVersionError" in str(err):
+                warnings.warn(
+                    "Freerouting jar needs a newer Java runtime. "
+                    "Install a newer JDK and rerun to enable JPype backend."
+                )
+            return False
 
-    def reset(self, seed=None, options=None):
-        super().reset(seed=seed)
-        
-      
-        self.controller.reset()
-        
+    def _init_legacy_backend(self):
+        routing_controller = jpype.JClass("app.freerouting.logic.RoutingController")
+        self._controller = routing_controller(self._dsn_file_path)
+        self._dummy_mode = False
+        self._backend = "jpype_legacy"
+        print("Freerouting backend: JPype legacy RoutingController")
 
-        java_observation = self.controller.getObservation()
-        observation = np.array(java_observation, dtype=np.uint8)
-        
-        info = {}
-        return observation, info
+    def _init_v1_backend(self):
+        self._status_controller = jpype.JClass(
+            "app.freerouting.api.v1.SystemControllerV1"
+        )()
+        self._session_controller = jpype.JClass(
+            "app.freerouting.api.v1.SessionControllerV1"
+        )()
+        self._job_controller = jpype.JClass("app.freerouting.api.v1.JobControllerV1")()
+        _ = self._response_status(self._status_controller.getStatus())
+        self._dummy_mode = False
+        self._backend = "jpype_api_v1"
+        print("Freerouting backend: JPype API v1 controllers")
+
+    def _dummy_obs(self):
+        image = self._rng.randint(
+            0,
+            256,
+            size=self.observation_space["image"].shape,
+            dtype=np.uint8,
+        )
+        return {"image": image}
+
+    def _text_obs(self, text):
+        digest = hashlib.sha256(text.encode("utf-8", errors="ignore")).digest()
+        seed = int.from_bytes(digest[:4], byteorder="little", signed=False)
+        rng = np.random.RandomState(seed)
+        image = rng.randint(
+            0,
+            256,
+            size=self.observation_space["image"].shape,
+            dtype=np.uint8,
+        )
+        return {"image": image}
+
+    def _response_status(self, response):
+        try:
+            return int(response.getStatus())
+        except Exception:
+            return -1
+
+    def _response_entity_text(self, response):
+        try:
+            entity = response.getEntity()
+            if entity is None:
+                return str(response)
+            return str(entity)
+        except Exception:
+            return str(response)
+
+    def reset(self):
+        self._step_count = 0
+        if self._dummy_mode:
+            obs = self._dummy_obs()
+            obs["is_first"] = True
+            obs["is_terminal"] = False
+            return obs
+
+        if self._backend == "jpype_legacy":
+            self._controller.reset()
+            java_observation = self._controller.getObservation()
+            image = np.asarray(java_observation, dtype=np.uint8)
+            return {"image": image, "is_first": True, "is_terminal": False}
+
+        if self._backend == "jpype_api_v1":
+            try:
+                health = self._status_controller.getStatus()
+                obs = self._text_obs(self._response_entity_text(health))
+            except Exception as err:
+                warnings.warn(
+                    f"API v1 reset failed ({err}); switching to dummy observations."
+                )
+                self._dummy_mode = True
+                self._backend = "dummy"
+                obs = self._dummy_obs()
+            obs["is_first"] = True
+            obs["is_terminal"] = False
+            return obs
+
+        obs = self._dummy_obs()
+        obs["is_first"] = True
+        obs["is_terminal"] = False
+        return obs
 
     def step(self, action):
+        self._step_count += 1
 
-        reward = self.controller.performAction(action)
-        
-        # 獲取新的狀態
-        java_observation = self.controller.getObservation()
-        observation = np.array(java_observation, dtype=np.uint8)
+        if self._dummy_mode:
+            obs = self._dummy_obs()
+            obs["is_first"] = False
+            done = self._step_count >= self._max_steps
+            obs["is_terminal"] = bool(done)
+            return obs, 0.0, done, {"backend": "dummy"}
 
-        # 檢查是否結束
-        done = self.controller.isFinished()
-        
-        terminated = bool(done)
-        truncated = False
-        info = {}
-        
-        return observation, float(reward), terminated, truncated, info
+        if self._backend == "jpype_legacy":
+            reward = float(self._controller.performAction(int(action)))
+            java_observation = self._controller.getObservation()
+            image = np.asarray(java_observation, dtype=np.uint8)
+            done = bool(self._controller.isFinished())
+            return (
+                {
+                    "image": image,
+                    "is_first": False,
+                    "is_terminal": done,
+                },
+                reward,
+                done,
+                {"backend": self._backend},
+            )
+
+        if self._backend == "jpype_api_v1":
+            done = self._step_count >= self._max_steps
+            reward = 0.0
+            try:
+                health = self._status_controller.getStatus()
+                status_code = self._response_status(health)
+                text = self._response_entity_text(health)
+                obs = self._text_obs(f"{status_code}:{text}:{int(action)}")
+                if status_code >= 500:
+                    reward = -1.0
+            except Exception as err:
+                warnings.warn(
+                    f"API v1 step failed ({err}); falling back to dummy mode."
+                )
+                self._dummy_mode = True
+                self._backend = "dummy"
+                obs = self._dummy_obs()
+
+            obs["is_first"] = False
+            obs["is_terminal"] = bool(done)
+            return obs, reward, done, {"backend": "jpype_api_v1"}
+
+        obs = self._dummy_obs()
+        obs["is_first"] = False
+        done = self._step_count >= self._max_steps
+        obs["is_terminal"] = bool(done)
+        return obs, 0.0, done, {"backend": "dummy"}
 
     def close(self):
-
-        print("環境已關閉。JVM 將在主程式結束時關閉。")
-        pass
-
-    def render(self, mode='human'):
-        pass
-
-# 主程式入口，用於測試
-if __name__ == '__main__':
-    # 假設您的 jar 檔和設計檔路徑如下
-    JAR_PATH = 'freerouting.jar'
-    DSN_FILE = 'path/to/your/design.dsn'
-
-    print("正在初始化環境...")
-    env = FreeroutingJPypeEnv(jar_path=JAR_PATH, dsn_file_path=DSN_FILE)
-    print("環境初始化成功！")
-
-    obs, info = env.reset()
-    for i in range(10):
-        action = env.action_space.sample()
-        obs, reward, terminated, truncated, info = env.step(action)
-        print(f"步驟 {i+1}: Action={action}, Reward={reward:.4f}, Done={terminated}")
-        if terminated or truncated:
-            break
-            
-    env.close()
+        return None

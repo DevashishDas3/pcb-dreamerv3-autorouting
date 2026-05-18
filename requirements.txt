@@ -1,23 +1,28 @@
-numpy>=1.25,<3
+numpy>=1.25,<2; platform_system == "Darwin"
+numpy>=1.25,<3; platform_system != "Darwin"
 matplotlib>=3.8,<3.11
 psutil>=5.9
 GPUtil>=1.4
 Pillow>=12.0.0
-opencv-python>=4.12.0
+opencv-python>=4.11,<4.12; platform_system == "Darwin"
+opencv-python>=4.12.0; platform_system != "Darwin"
 tqdm>=4.66
 ruamel.yaml>=0.18
 cloudpickle>=3.1
-torch>=2.5
+torch>=2.5; platform_system != "Darwin"
+torch>=2.2,<2.3; platform_system == "Darwin"
+tensorboard>=2.16
 einops>=0.6
 optax>=0.2
 chex>=0.1
-jax[cuda12]>=0.4.33
+jax[cuda12]>=0.4.33; platform_system == "Linux"
+jax>=0.4.33; platform_system != "Linux"
 jaxtyping>=0.2
 ninjax>=3.5.1
 dm_control>=1.0.34
 gym>=0.22
 gymnasium>=1.2
-minerl>=0.4
+minerl>=0.4; platform_system == "Linux"
 ale-py>=0.9
 autorom[accept-rom-license]>=0.6
 elements>=3.19.1
@@ -27,4 +32,5 @@ scope>=0.4.4
 ipdb>=0.13
 colored-traceback>=0.3
 google-resumable-media>=2.7.2
-nvidia-cuda-nvcc-cu12<=12.2
+jpype1>=1.5.0
+nvidia-cuda-nvcc-cu12<=12.2; platform_system == "Linux"
