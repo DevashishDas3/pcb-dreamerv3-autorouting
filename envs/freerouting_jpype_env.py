@@ -226,12 +226,27 @@ class FreeroutingJPypeEnv(gym.Env):
             done = self._step_count >= self._max_steps
             reward = 0.0
             try:
+                import sys
+                import time
+
+                t0 = time.time()
                 health = self._status_controller.getStatus()
+                t1 = time.time()
+                if t1 - t0 > 0.1:
+                    print(
+                        f"[SLOW] getStatus took {t1-t0:.3f}s",
+                        flush=True,
+                        file=sys.stderr,
+                    )
                 status_code = self._response_status(health)
                 text = self._response_entity_text(health)
                 obs = self._text_obs(f"{status_code}:{text}:{int(action)}")
                 if status_code >= 500:
                     reward = -1.0
+                if self._step_count % 100 == 0:
+                    print(
+                        f"[V1] step {self._step_count} ok", flush=True, file=sys.stderr
+                    )
             except Exception as err:
                 warnings.warn(
                     f"API v1 step failed ({err}); falling back to dummy mode."

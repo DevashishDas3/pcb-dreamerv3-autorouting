@@ -228,6 +228,9 @@ def make_env(config, mode, id):
 
 
 def main(config):
+    import sys
+
+    print("[MAIN] Entry", flush=True, file=sys.stderr)
     tools.set_seed_everywhere(config.seed)
     if config.deterministic_run:
         tools.enable_deterministic_run()
@@ -241,7 +244,7 @@ def main(config):
     config.log_every //= config.action_repeat
     config.time_limit //= config.action_repeat
 
-    print("Logdir", logdir)
+    print("Logdir", logdir, flush=True, file=sys.stderr)
     logdir.mkdir(parents=True, exist_ok=True)
     config.traindir.mkdir(parents=True, exist_ok=True)
     config.evaldir.mkdir(parents=True, exist_ok=True)
