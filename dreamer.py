@@ -3,6 +3,7 @@ import functools
 import os
 import pathlib
 import sys
+import time
 import gymnasium as gym
 
 os.environ["MUJOCO_GL"] = "glfw"
@@ -58,15 +59,29 @@ class Dreamer(nn.Module):
     def __call__(self, obs, reset, state=None, training=True):
         step = self._step
         if training:
+            train_started = time.perf_counter()
             steps = (
                 self._config.pretrain
                 if self._should_pretrain()
                 else self._should_train(step)
             )
             for _ in range(steps):
-                self._train(next(self._dataset))
+                batch = next(self._dataset)
+                update_started = time.perf_counter()
+                self._train(batch)
                 self._update_count += 1
                 self._metrics["update_count"] = self._update_count
+                if self._update_count % 5 == 0:
+                    batch_keys = ",".join(list(batch.keys())[:5])
+                    update_seconds = time.perf_counter() - update_started
+                    total_seconds = time.perf_counter() - train_started
+                    print(
+                        f"[TRAIN] step={step} updates={self._update_count} "
+                        f"batch_keys={batch_keys} update_s={update_seconds:.2f} "
+                        f"elapsed_s={total_seconds:.1f}",
+                        flush=True,
+                        file=sys.stderr,
+                    )
             if self._should_log(step):
                 for name, values in self._metrics.items():
                     self._logger.scalar(name, float(np.mean(values)))
@@ -330,8 +345,8 @@ def main(config):
     # make sure eval will be executed once after config.steps
     while agent._step < config.steps + config.eval_every:
         logger.write()
+
         if config.eval_episode_num > 0:
-            print("Start evaluation.")
             eval_policy = functools.partial(agent, training=False)
             tools.simulate(
                 eval_policy,
@@ -345,7 +360,7 @@ def main(config):
             if config.video_pred_log:
                 video_pred = agent._wm.video_pred(next(eval_dataset))
                 logger.video("eval_openl", to_np(video_pred))
-        print("Start training.")
+
         state = tools.simulate(
             agent,
             train_envs,
