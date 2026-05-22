@@ -13,12 +13,15 @@ With your trained checkpoint, you have three main options:
 ## Option 1: Generate Routing Solutions
 
 ### Quickest Start (30 seconds)
+
 ```bash
 python quick_infer.py
 ```
+
 This runs a single inference attempt and shows the result.
 
 ### Full Control (Multiple Solutions)
+
 ```bash
 # Try 5 different routing attempts, pick the best
 python infer.py --checkpoint logs/freerouting_debug2/latest.pt \
@@ -49,6 +52,7 @@ Your PCB Image (64×64×3 pixels)
 ## Option 2: Continue Training (Recommended for Better Results)
 
 ### Current Model Status
+
 ```
 Updates Completed: 105 (100 pretrain + 5 main)
 Training Duration: ~38 minutes
@@ -58,17 +62,18 @@ Expected Reward: 0.0 (hasn't learned routing patterns yet)
 
 ### Why Continue Training?
 
-| Training Level | Behavior | Expected Reward |
-|---|---|---|
-| 100 updates (current) | Random actions | 0.0 |
-| 500 updates | Starts learning | 0.1-0.3 |
-| 1000 updates | Basic patterns | 0.3-0.5 |
-| 10,000 updates | Good routing | 0.7-0.9 |
-| 100,000+ updates | Expert | 0.9+ |
+| Training Level        | Behavior        | Expected Reward |
+| --------------------- | --------------- | --------------- |
+| 100 updates (current) | Random actions  | 0.0             |
+| 500 updates           | Starts learning | 0.1-0.3         |
+| 1000 updates          | Basic patterns  | 0.3-0.5         |
+| 10,000 updates        | Good routing    | 0.7-0.9         |
+| 100,000+ updates      | Expert          | 0.9+            |
 
 ### Run Extended Training
 
 **Option A: Quick Test (1-2 hours)**
+
 ```bash
 python -u dreamer.py \
   --configs freerouting \
@@ -77,9 +82,11 @@ python -u dreamer.py \
   --eval_every 5 \
   --logdir logs/freerouting_v2
 ```
+
 Expected: 250-300 additional updates
 
 **Option B: Medium Training (4-6 hours)**
+
 ```bash
 python -u dreamer.py \
   --configs freerouting \
@@ -88,9 +95,11 @@ python -u dreamer.py \
   --eval_every 10 \
   --logdir logs/freerouting_v3
 ```
+
 Expected: 500-600 additional updates
 
 **Option C: Full Training (12+ hours)**
+
 ```bash
 python -u dreamer.py \
   --configs freerouting \
@@ -99,15 +108,18 @@ python -u dreamer.py \
   --eval_every 20 \
   --logdir logs/freerouting_full
 ```
+
 Expected: 2000-3000 additional updates
 
 ### Monitor Training Progress
+
 ```bash
 # In separate terminal, watch the logs
 tail -f logs/freerouting_v2/metrics.jsonl
 ```
 
 You'll see:
+
 - Model loss decreasing (good sign)
 - Reward signal improving
 - Actor entropy stabilizing
@@ -117,11 +129,13 @@ You'll see:
 ## Option 3: Analyze What the Model Learned
 
 ### View Checkpoint Statistics
+
 ```bash
 python deep_analysis.py
 ```
 
 Outputs:
+
 - Parameter counts per module
 - Weight distribution statistics
 - Learned feature analysis
@@ -130,7 +144,7 @@ Outputs:
 ### Understanding the Output
 
 ```
-GRU Weight Std: 0.0280 
+GRU Weight Std: 0.0280
   → Indicates how much the RNN is using its parameters
   → Lower = less activity (learning not yet complete)
 
@@ -144,6 +158,7 @@ Sparsity: 28.7% near zero
 ```
 
 ### Generate Full Report
+
 ```bash
 # Creates CHECKPOINT_ANALYSIS.md with detailed insights
 python deep_analysis.py > checkpoint_report.txt
@@ -154,6 +169,7 @@ python deep_analysis.py > checkpoint_report.txt
 ## Real-World Workflows
 
 ### Workflow 1: Sanity Check ("Does it work?")
+
 ```bash
 # Run once to verify inference pipeline
 python quick_infer.py
@@ -166,6 +182,7 @@ python quick_infer.py
 ```
 
 ### Workflow 2: Benchmark on New Problems
+
 ```bash
 # Test model on different PCB files
 for dsn_file in pcbs/*.dsn; do
@@ -180,6 +197,7 @@ done
 ```
 
 ### Workflow 3: Production Routing
+
 ```bash
 # Generate high-quality solutions via ensemble
 for i in {1..10}; do
@@ -193,6 +211,7 @@ done
 ```
 
 ### Workflow 4: Iterative Improvement
+
 ```bash
 # Run → Analyze → Train → Repeat
 echo "1. Generate solution with current model"
@@ -212,6 +231,7 @@ python quick_infer.py
 ## Code Examples
 
 ### Example 1: Load and Inspect Checkpoint
+
 ```python
 import torch
 checkpoint = torch.load('logs/freerouting_debug2/latest.pt')
@@ -227,6 +247,7 @@ for name, tensor in list(agent_state.items())[:5]:
 ```
 
 ### Example 2: Custom Inference Loop
+
 ```python
 from infer import InferenceAgent
 
@@ -246,6 +267,7 @@ print(f"Best attempt: {best['attempt']} with reward {best['reward']:.4f}")
 ```
 
 ### Example 3: Extract Learned Features
+
 ```python
 torch.set_grad_enabled(False)
 
@@ -261,6 +283,7 @@ print(f"Embedding range: [{embedding.min():.4f}, {embedding.max():.4f}]")
 ```
 
 ### Example 4: Trace Decision Making
+
 ```python
 # See what the actor network decided
 obs_torch = agent._wm.preprocess(obs)
@@ -281,6 +304,7 @@ print(f"Action entropy: {actor.entropy()}")
 ## Performance Expectations
 
 ### Current Model (105 updates)
+
 ```
 ✅ Works: Inference pipeline fully functional
 ✅ Stable: No crashes or NaN values
@@ -290,6 +314,7 @@ print(f"Action entropy: {actor.entropy()}")
 ```
 
 ### After Training 500 Updates (4 hours)
+
 ```
 ✅ Learning: Some reward signal visible
 ✅ Faster: Update speed stabilizes
@@ -298,6 +323,7 @@ print(f"Action entropy: {actor.entropy()}")
 ```
 
 ### After Training 5000 Updates (40 hours)
+
 ```
 ✅ Competent: Meaningful routing behavior
 ✅ Consistent: Reproducible solutions
@@ -310,27 +336,33 @@ print(f"Action entropy: {actor.entropy()}")
 ## Comparison: Different Inference Modes
 
 ### Greedy (Deterministic)
+
 ```bash
 python infer.py --greedy
 ```
+
 - **Mode**: Always pick most likely action
 - **Pros**: Reproducible, consistent
 - **Cons**: May miss better alternatives
 - **Best for**: Benchmarking, baseline measurements
 
 ### Stochastic (Sampling)
+
 ```bash
 python infer.py
 ```
+
 - **Mode**: Sample from action distribution
 - **Pros**: Explores different solutions
 - **Cons**: Varies each run (need multiple attempts)
 - **Best for**: Finding good solutions, evaluating variance
 
 ### Ensemble (Multiple Attempts)
+
 ```bash
 python infer.py --num-solutions 10
 ```
+
 - **Mode**: Run stochastic 10 times, pick best
 - **Pros**: Very high quality solutions
 - **Cons**: Slower (10x runtime)
@@ -341,6 +373,7 @@ python infer.py --num-solutions 10
 ## Troubleshooting
 
 ### Problem: Model outputs garbage/NaN
+
 ```bash
 # Check checkpoint is valid
 python -c "
@@ -352,6 +385,7 @@ print('Valid checkpoint!)
 ```
 
 ### Problem: Inference is too slow
+
 ```bash
 # Use GPU if available
 python infer.py --device cuda
@@ -361,6 +395,7 @@ python infer.py --max-steps 100
 ```
 
 ### Problem: Greedy vs stochastic produces very different rewards
+
 ```bash
 # This is normal! Greedy is deterministic, sampling explores.
 # Sample multiple times:
@@ -368,6 +403,7 @@ python infer.py --num-solutions 5
 ```
 
 ### Problem: Nothing improves with more training
+
 ```bash
 # Check:
 1. Is training actually updating? (watch policy entropy in metrics)
@@ -379,30 +415,33 @@ python infer.py --num-solutions 5
 
 ## Files Reference
 
-| File | Purpose | When to Use |
-|------|---------|------------|
-| `quick_infer.py` | Single solution (simplest) | Quick test |
-| `infer.py` | Full inference with options | Production routing |
-| `INFERENCE_GUIDE.md` | Detailed inference documentation | Learning API |
-| `CHECKPOINT_ANALYSIS.md` | What model learned report | Understanding model |
-| `deep_analysis.py` | Analysis script | Debugging/inspection |
-| `dreamer.py` | Training code | Continue training |
+| File                     | Purpose                          | When to Use          |
+| ------------------------ | -------------------------------- | -------------------- |
+| `quick_infer.py`         | Single solution (simplest)       | Quick test           |
+| `infer.py`               | Full inference with options      | Production routing   |
+| `INFERENCE_GUIDE.md`     | Detailed inference documentation | Learning API         |
+| `CHECKPOINT_ANALYSIS.md` | What model learned report        | Understanding model  |
+| `deep_analysis.py`       | Analysis script                  | Debugging/inspection |
+| `dreamer.py`             | Training code                    | Continue training    |
 
 ---
 
 ## Summary: What You Can Do Now
 
 ✅ **Immediately:**
+
 - Generate routing solutions: `python quick_infer.py`
 - Analyze checkpoint: `python deep_analysis.py`
 - Review what it learned: `CHECKPOINT_ANALYSIS.md`
 
 🔄 **Short-term (1-2 hours):**
+
 - Train for longer: `python -u dreamer.py --configs freerouting --steps 50`
 - Compare model versions
 - Measure improvement
 
 🎯 **Long-term (12+ hours):**
+
 - Produce production-ready routing model
 - Deploy for actual PCB design workflow
 - Benchmark against baselines
@@ -430,6 +469,7 @@ python deep_analysis.py
 ---
 
 **Questions?** Check:
+
 - `INFERENCE_GUIDE.md` - API and workflow details
 - `CHECKPOINT_ANALYSIS.md` - What the model learned
 - Code comments in `infer.py` and `quick_infer.py`
