@@ -63,6 +63,7 @@ class Logger:
         self._scalars = {}
         self._images = {}
         self._videos = {}
+        self._video_warning = False
         self.step = step
 
     def scalar(self, name, value):
@@ -96,7 +97,12 @@ class Logger:
                 value = np.clip(255 * value, 0, 255).astype(np.uint8)
             B, T, H, W, C = value.shape
             value = value.transpose(1, 4, 2, 0, 3).reshape((1, T, C, H, B * W))
-            self._writer.add_video(name, value, step, 16)
+            try:
+                self._writer.add_video(name, value, step, 16)
+            except Exception as err:
+                if not self._video_warning:
+                    print(f"Skipping video logging for {name}: {err}")
+                    self._video_warning = True
 
         self._writer.flush()
         self._scalars = {}
@@ -122,7 +128,12 @@ class Logger:
             value = np.clip(255 * value, 0, 255).astype(np.uint8)
         B, T, H, W, C = value.shape
         value = value.transpose(1, 4, 2, 0, 3).reshape((1, T, C, H, B * W))
-        self._writer.add_video(name, value, step, 16)
+        try:
+            self._writer.add_video(name, value, step, 16)
+        except Exception as err:
+            if not self._video_warning:
+                print(f"Skipping offline video logging for {name}: {err}")
+                self._video_warning = True
 
 
 def simulate(
