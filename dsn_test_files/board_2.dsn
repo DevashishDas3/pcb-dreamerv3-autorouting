@@ -1,0 +1,125 @@
+(pcb "board_2.dsn"
+  (parser
+    (string_quote ")
+    (space_in_quoted_tokens on)
+    (host_cad "KiCad's Pcbnew")
+    (host_version "7.0")
+  )
+  (resolution um 10)
+  (unit um)
+
+  (structure
+    (layer F.Cu
+      (type signal)
+    )
+    (layer B.Cu
+      (type signal)
+    )
+    (boundary
+      (rect pcb 0 0 100000 80000)
+    )
+    (via "via_800um_400um_default")
+    (rule
+      (width 250)
+      (clearance 200)
+      (clearance 200 (type default_smd))
+      (clearance 100 (type smd_smd))
+    )
+  )
+
+  (placement
+    (component "MountingHole_2.4mm"
+      (place "UPTH1" 90640 63080 front 0 (part "MountingHole") (property (value "UPTH")))
+    )
+    (component "MountingHole_2.4mm"
+      (place "UPTH2" 52240 15260 front 0 (part "MountingHole") (property (value "UPTH")))
+    )
+    (component "MountingHole_2.4mm"
+      (place "UPTH3" 43590 41250 front 0 (part "MountingHole") (property (value "UPTH")))
+    )
+    (component "MountingHole_2.4mm"
+      (place "UPTH4" 6180 7730 front 0 (part "MountingHole") (property (value "UPTH")))
+    )
+    (component "MountingHole_2.4mm"
+      (place "UPTH5" 91730 15630 front 0 (part "MountingHole") (property (value "UPTH")))
+    )
+    (component "MountingHole_2.4mm"
+      (place "UPTH6" 84770 18070 front 0 (part "MountingHole") (property (value "UPTH")))
+    )
+    (component "MountingHole_2.4mm"
+      (place "UPTH7" 75810 64460 front 0 (part "MountingHole") (property (value "UPTH")))
+    )
+    (component "MountingHole_2.4mm"
+      (place "UPTH8" 34070 6660 front 0 (part "MountingHole") (property (value "UPTH")))
+    )
+    (component "TestPoint_Pad_1.0x1.0mm"
+      (place "SIG1" 14080 34250 front 0 (part "TestPoint") (property (value "SignalStart")))
+    )
+    (component "TestPoint_Pad_1.0x1.0mm"
+      (place "SIG2" 91180 22780 front 0 (part "TestPoint") (property (value "SignalStart")))
+    )
+    (component "TestPoint_Pad_1.0x1.0mm"
+      (place "SIG3" 37300 60520 front 0 (part "TestPoint") (property (value "SignalStart")))
+    )
+    (component "TestPoint_Pad_1.0x1.0mm"
+      (place "SIG4" 83590 40970 front 0 (part "TestPoint") (property (value "SignalStart")))
+    )
+  )
+
+  (library
+    (image "MountingHole_2.4mm"
+      (keepout "" (circle F.Cu 1200))
+      (pad "" via (circle 1200)
+        (attach off)
+      )
+    )
+    (image "TestPoint_Pad_1.0x1.0mm"
+      (pad "1" smd (rect 1000 1000)
+        (attach on)
+      )
+    )
+  )
+
+  (network
+    (net "Signal_1"
+      (pins "SIG1"-"1")
+    )
+    (net "Signal_2"
+      (pins "SIG2"-"1")
+    )
+    (net "Signal_3"
+      (pins "SIG3"-"1")
+    )
+    (net "Signal_4"
+      (pins "SIG4"-"1")
+    )
+    (net "UPTH_NET_1"
+      (pins "UPTH1"-"")
+    )
+    (net "UPTH_NET_2"
+      (pins "UPTH2"-"")
+    )
+    (net "UPTH_NET_3"
+      (pins "UPTH3"-"")
+    )
+    (net "UPTH_NET_4"
+      (pins "UPTH4"-"")
+    )
+    (net "UPTH_NET_5"
+      (pins "UPTH5"-"")
+    )
+    (net "UPTH_NET_6"
+      (pins "UPTH6"-"")
+    )
+    (net "UPTH_NET_7"
+      (pins "UPTH7"-"")
+    )
+    (net "UPTH_NET_8"
+      (pins "UPTH8"-"")
+    )
+  )
+
+  (wiring
+  )
+
+)

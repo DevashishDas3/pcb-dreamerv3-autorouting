@@ -212,10 +212,23 @@ def make_env(config, mode, id):
         import envs.freerouting_jpype_env as freerouting_env
 
         print("Creating Gym environment: Freerouting-v0")
+
+        # Get DSN files list from config, with fallback to single file
+        dsn_files = getattr(config, "freerouting_dsn_files", [])
+        if not dsn_files and hasattr(config, "freerouting_dsn_path"):
+            dsn_files = [config.freerouting_dsn_path]
+
+        # Get intersection penalty scale from config
+        intersection_penalty_scale = getattr(
+            config, "freerouting_intersection_penalty_scale", 0.1
+        )
+
         env = freerouting_env.FreeroutingJPypeEnv(
             jar_path=config.freerouting_jar_path,
             dsn_file_path=config.freerouting_dsn_path,
+            dsn_files_list=dsn_files,
             seed=config.seed + id,
+            intersection_penalty_scale=intersection_penalty_scale,
         )
         env = wrappers.OneHotAction(env)
     elif suite == "gym":

@@ -1,3 +1,4 @@
+import glob
 import hashlib
 import os
 import warnings
@@ -20,10 +21,12 @@ class FreeroutingJPypeEnv(gym.Env):
         self,
         jar_path="",
         dsn_file_path="",
+        dsn_files_list=None,
         seed=0,
         action_size=100,
         obs_shape=(64, 64, 3),
         max_steps=200,
+        intersection_penalty_scale=0.1,
     ):
         super().__init__()
         self._rng = np.random.RandomState(seed)
@@ -35,7 +38,16 @@ class FreeroutingJPypeEnv(gym.Env):
         self._status_controller = None
         self._session_controller = None
         self._job_controller = None
-        self._dsn_file_path = dsn_file_path
+        self._intersection_penalty_scale = intersection_penalty_scale
+
+        # Handle multi-DSN setup
+        self._dsn_files_list = dsn_files_list if dsn_files_list else []
+        if dsn_file_path and not self._dsn_files_list:
+            self._dsn_files_list = [dsn_file_path]
+        self._current_dsn_path = dsn_file_path or (
+            self._dsn_files_list[0] if self._dsn_files_list else ""
+        )
+        self._dsn_file_path = self._current_dsn_path  # For backward compatibility
 
         self.action_space = gym.spaces.Discrete(action_size)
         self.observation_space = gym.spaces.Dict(
@@ -56,17 +68,27 @@ class FreeroutingJPypeEnv(gym.Env):
             print("Freerouting backend: dummy")
             return
 
-        if not (
-            jar_path
-            and dsn_file_path
-            and os.path.exists(jar_path)
-            and os.path.exists(dsn_file_path)
-        ):
+        # Validate jar path and DSN files
+        if not jar_path or not os.path.exists(jar_path):
             warnings.warn(
-                "Freerouting jar or dsn path is missing/invalid; using dummy freerouting environment."
+                "Freerouting jar path is missing/invalid; using dummy freerouting environment."
             )
             print("Freerouting backend: dummy")
             return
+
+        if not self._dsn_files_list:
+            warnings.warn("No DSN files provided; using dummy freerouting environment.")
+            print("Freerouting backend: dummy")
+            return
+
+        # Validate all DSN files exist
+        for dsn_file in self._dsn_files_list:
+            if not os.path.exists(dsn_file):
+                warnings.warn(
+                    f"DSN file not found: {dsn_file}; using dummy freerouting environment."
+                )
+                print("Freerouting backend: dummy")
+                return
 
         try:
             if not jpype.isJVMStarted():
@@ -108,10 +130,12 @@ class FreeroutingJPypeEnv(gym.Env):
 
     def _init_legacy_backend(self):
         routing_controller = jpype.JClass("app.freerouting.logic.RoutingController")
-        self._controller = routing_controller(self._dsn_file_path)
+        self._controller = routing_controller(self._current_dsn_path)
         self._dummy_mode = False
         self._backend = "jpype_legacy"
-        print("Freerouting backend: JPype legacy RoutingController")
+        print(
+            f"Freerouting backend: JPype legacy RoutingController (DSN: {self._current_dsn_path})"
+        )
 
     def _init_v1_backend(self):
         self._status_controller = jpype.JClass(
@@ -162,8 +186,76 @@ class FreeroutingJPypeEnv(gym.Env):
         except Exception:
             return str(response)
 
+    def load_dsn_file(self, dsn_file_path):
+        """Load a new DSN file dynamically. Works for legacy backend only."""
+        if self._dummy_mode or not self._controller:
+            return False
+
+        try:
+            if self._backend == "jpype_legacy":
+                # For legacy backend, create a new controller with the new DSN file
+                routing_controller = jpype.JClass(
+                    "app.freerouting.logic.RoutingController"
+                )
+                self._controller = routing_controller(dsn_file_path)
+                self._current_dsn_path = dsn_file_path
+                self._dsn_file_path = dsn_file_path
+                return True
+            elif self._backend == "jpype_api_v1":
+                # API v1 backend doesn't support DSN switching in the same session
+                # Would require session reset/reload which is complex
+                return False
+        except Exception as err:
+            warnings.warn(f"Failed to load DSN file {dsn_file_path}: {err}")
+            return False
+
+        return False
+
+    def _detect_intersections(self):
+        """Detect trace intersections in the current routing.
+        Returns a penalty value based on intersection count."""
+        if self._dummy_mode or not self._controller:
+            return 0.0
+
+        try:
+            if self._backend == "jpype_legacy":
+                # Check if there's a method to get unrouted nets or violations
+                # The intersection penalty can be derived from unrouted nets count
+                # Higher unrouted count = more potential intersections
+                if hasattr(self._controller, "getUnroutedNets"):
+                    unrouted_count = self._controller.getUnroutedNets()
+                    if unrouted_count > 0:
+                        # Penalty based on unrouted nets (proxy for intersections)
+                        penalty = self._intersection_penalty_scale * min(
+                            unrouted_count, 10
+                        )
+                        return penalty
+
+                # Alternative: check for violations/conflicts if available
+                if hasattr(self._controller, "getViolationCount"):
+                    violation_count = self._controller.getViolationCount()
+                    penalty = self._intersection_penalty_scale * violation_count
+                    return penalty
+
+            elif self._backend == "jpype_api_v1":
+                # For API v1, check status code for violations
+                status_code = self._response_status(self._status_controller.getStatus())
+                if status_code >= 500:
+                    return self._intersection_penalty_scale
+        except Exception as err:
+            warnings.warn(f"Error detecting intersections: {err}")
+
+        return 0.0
+
     def reset(self):
         self._step_count = 0
+
+        # Sample a random DSN file if multiple are available
+        if len(self._dsn_files_list) > 1:
+            sampled_dsn = self._rng.choice(self._dsn_files_list)
+            if sampled_dsn != self._current_dsn_path:
+                self.load_dsn_file(sampled_dsn)
+
         if self._dummy_mode:
             obs = self._dummy_obs()
             obs["is_first"] = True
@@ -208,6 +300,10 @@ class FreeroutingJPypeEnv(gym.Env):
 
         if self._backend == "jpype_legacy":
             reward = float(self._controller.performAction(int(action)))
+            # Apply intersection penalty
+            intersection_penalty = self._detect_intersections()
+            reward -= intersection_penalty
+
             java_observation = self._controller.getObservation()
             image = np.asarray(java_observation, dtype=np.uint8)
             done = bool(self._controller.isFinished())
@@ -219,7 +315,7 @@ class FreeroutingJPypeEnv(gym.Env):
                 },
                 reward,
                 done,
-                {"backend": self._backend},
+                {"backend": self._backend, "dsn_file": self._current_dsn_path},
             )
 
         if self._backend == "jpype_api_v1":
@@ -243,6 +339,11 @@ class FreeroutingJPypeEnv(gym.Env):
                 obs = self._text_obs(f"{status_code}:{text}:{int(action)}")
                 if status_code >= 500:
                     reward = -1.0
+
+                # Apply intersection penalty on top of any other penalties
+                intersection_penalty = self._detect_intersections()
+                reward -= intersection_penalty
+
                 if self._step_count % 100 == 0:
                     print(
                         f"[V1] step {self._step_count} ok", flush=True, file=sys.stderr
@@ -257,7 +358,12 @@ class FreeroutingJPypeEnv(gym.Env):
 
             obs["is_first"] = False
             obs["is_terminal"] = bool(done)
-            return obs, reward, done, {"backend": "jpype_api_v1"}
+            return (
+                obs,
+                reward,
+                done,
+                {"backend": "jpype_api_v1", "dsn_file": self._current_dsn_path},
+            )
 
         obs = self._dummy_obs()
         obs["is_first"] = False

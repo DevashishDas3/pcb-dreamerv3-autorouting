@@ -1,0 +1,107 @@
+(pcb "board_1.dsn"
+  (parser
+    (string_quote ")
+    (space_in_quoted_tokens on)
+    (host_cad "KiCad's Pcbnew")
+    (host_version "7.0")
+  )
+  (resolution um 10)
+  (unit um)
+
+  (structure
+    (layer F.Cu
+      (type signal)
+    )
+    (layer B.Cu
+      (type signal)
+    )
+    (boundary
+      (rect pcb 0 0 100000 80000)
+    )
+    (via "via_800um_400um_default")
+    (rule
+      (width 250)
+      (clearance 200)
+      (clearance 200 (type default_smd))
+      (clearance 100 (type smd_smd))
+    )
+  )
+
+  (placement
+    (component "MountingHole_2.4mm"
+      (place "UPTH1" 13050 37000 front 0 (part "MountingHole") (property (value "UPTH")))
+    )
+    (component "MountingHole_2.4mm"
+      (place "UPTH2" 10210 69440 front 0 (part "MountingHole") (property (value "UPTH")))
+    )
+    (component "MountingHole_2.4mm"
+      (place "UPTH3" 89340 28800 front 0 (part "MountingHole") (property (value "UPTH")))
+    )
+    (component "MountingHole_2.4mm"
+      (place "UPTH4" 33230 58230 front 0 (part "MountingHole") (property (value "UPTH")))
+    )
+    (component "MountingHole_2.4mm"
+      (place "UPTH5" 23940 18140 front 0 (part "MountingHole") (property (value "UPTH")))
+    )
+    (component "TestPoint_Pad_1.0x1.0mm"
+      (place "SIG1" 20240 37120 front 0 (part "TestPoint") (property (value "SignalStart")))
+    )
+    (component "TestPoint_Pad_1.0x1.0mm"
+      (place "SIG2" 72750 53150 front 0 (part "TestPoint") (property (value "SignalStart")))
+    )
+    (component "TestPoint_Pad_1.0x1.0mm"
+      (place "SIG3" 69480 35740 front 0 (part "TestPoint") (property (value "SignalStart")))
+    )
+    (component "TestPoint_Pad_1.0x1.0mm"
+      (place "SIG4" 75200 42110 front 0 (part "TestPoint") (property (value "SignalStart")))
+    )
+  )
+
+  (library
+    (image "MountingHole_2.4mm"
+      (keepout "" (circle F.Cu 1200))
+      (pad "" via (circle 1200)
+        (attach off)
+      )
+    )
+    (image "TestPoint_Pad_1.0x1.0mm"
+      (pad "1" smd (rect 1000 1000)
+        (attach on)
+      )
+    )
+  )
+
+  (network
+    (net "Signal_1"
+      (pins "SIG1"-"1")
+    )
+    (net "Signal_2"
+      (pins "SIG2"-"1")
+    )
+    (net "Signal_3"
+      (pins "SIG3"-"1")
+    )
+    (net "Signal_4"
+      (pins "SIG4"-"1")
+    )
+    (net "UPTH_NET_1"
+      (pins "UPTH1"-"")
+    )
+    (net "UPTH_NET_2"
+      (pins "UPTH2"-"")
+    )
+    (net "UPTH_NET_3"
+      (pins "UPTH3"-"")
+    )
+    (net "UPTH_NET_4"
+      (pins "UPTH4"-"")
+    )
+    (net "UPTH_NET_5"
+      (pins "UPTH5"-"")
+    )
+  )
+
+  (wiring
+  )
+
+)
